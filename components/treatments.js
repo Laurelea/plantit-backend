@@ -29,15 +29,49 @@ router.get("/", async (req, res) => {
 })
 
 router.get("/api/show-templates", async (req, res) => {
-    const showTemplates = async () => {
-        return await db
-            .select()
-            .from('treatments_templates')
-            .catch(err => {
-                console.info('showTemplates err', err)
-            });
-    }
-    const result = await showTemplates(req.body)
+    const result = await db
+        .select()
+        .from('treatments_templates')
+        .catch(err => {
+            console.info('show-templates err', err)
+        });
+    res.json(result)
+})
+
+router.get("/api/show-treatments", async (req, res) => {
+    const result = await db
+        .select()
+        .from('treatments')
+        .catch(err => {
+            console.info('show-treatments err', err)
+        });
+    res.json(result)
+})
+
+router.get("/api/show-components", async (req, res) => {
+    const result = await db
+        .select()
+        .from('components')
+        .catch(err => {
+            console.info('show-components err', err)
+        });
+    res.json(result)
+})
+
+router.post("/api/add-component", async (req, res) => {
+    const { data } = req
+    const result = await db
+        .insert({
+            ...data
+        })
+        .into('components')
+        .returning('*')
+        .then(result => {
+            console.info('add-component result', result)
+        })
+        .catch(err => {
+            console.info('add-component err', err)
+        });
     res.json(result)
 })
 
