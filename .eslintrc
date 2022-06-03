@@ -1,0 +1,65 @@
+{
+  "parser": "babel-eslint",
+  "plugins": [],
+  "env": {
+    "browser": true,
+    "jquery": true,
+    "node": true,
+    "es6": true,
+    "mocha": true,
+    "phantomjs": true
+  },
+  "globals": {
+    "__DEV__": true,
+    "__SERVER__": true
+  },
+  "rules": {
+    "max-len": ["error", { "code": 120, "ignoreTemplateLiterals": true, "ignoreRegExpLiterals": true, "ignoreUrls": true }],
+    "global-require": 0,
+    "no-useless-escape": 0,
+    "import/no-extraneous-dependencies": 0,
+    "no-param-reassign": 0,
+    "no-plusplus": 0,
+    "no-bitwise": 0,
+    "no-mixed-operators": 0,
+    "no-unused-expressions": 0,
+    "no-cond-assign": 0,
+    "no-nested-ternary": 0,
+    "function-paren-newline": 0,
+    "prefer-promise-reject-errors": 0,
+    "no-restricted-globals": 0,
+    "no-return-assign": 0,
+    "no-underscore-dangle": 0,
+    "no-multi-assign": 0,
+    "dot-location": [2, "property"],
+    "no-extra-parens": [2, "functions"],
+    "no-unused-vars": 2,
+    "no-console": ["error", { "allow": ["warn", "error", "info"] }],
+    "arrow-parens": ["error", "as-needed"],
+    "object-curly-newline": ["error", { "minProperties": 8, "consistent": true }],
+    "no-invalid-this": 0,
+    //es6 enviroment
+    "no-const-assign": 2,
+    "prefer-const": 2,
+    "prefer-template": 2,
+    "prefer-arrow-callback": 2,
+    "require-jsdoc": ["error", {
+      "require": {
+        "FunctionDeclaration": false,
+        "MethodDefinition": false,
+        "ClassDeclaration": false,
+        "ArrowFunctionExpression": false
+      }
+    }],
+    "space-before-function-paren": ["error", {
+      "anonymous": "never",
+      "named": "never",
+      "asyncArrow": "always"
+    }],
+    "comma-spacing": ["error", { "before": false, "after": true }],
+    "yoda": 2,
+    "no-var": 2,
+    "quote-props": [2, "as-needed", { "keywords": false, "unnecessary": false }],
+    "operator-linebreak": ["error", "after"]
+  }
+}

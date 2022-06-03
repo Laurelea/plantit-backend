@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/treatments.iml" filepath="$PROJECT_DIR$/.idea/treatments.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../plantit-backend/.idea/plantit-backend.iml" filepath="$PROJECT_DIR$/../plantit-backend/.idea/plantit-backend.iml" />
     </modules>
   </component>
 </project>
