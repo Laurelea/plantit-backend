@@ -39,9 +39,31 @@ router.get("/api/show-templates", async (req, res) => {
 })
 
 router.get("/api/show-treatments", async (req, res) => {
+    const fields = `
+        t.id,
+        t.date_create,
+        t.status,
+        tt.plant,
+        tt.type,
+        tt.purpose,
+        tt.phase_start,
+        tt.phase_end,
+        t.period_started,
+        t.period_ended,
+        t.dates_to_do,
+        t.dates_done,
+        t.number_done,
+        tt.frequency,
+        tt.treatment_gap,
+        tt.special_condition
+      `;
+    const components = ', array_agg(c.name) as components';
     const result = await db
-        .select()
-        .from('treatments')
+        .select(db.raw(fields + components))
+        .from({t: 'treatments'})
+        .leftJoin({ tt: 'treatments_templates' }, 't.template_id', 'tt.id')
+        .leftJoin(db.raw('components c on c.id::text = any(t.contents)'))
+        .groupBy(db.raw(fields))
         .catch(err => {
             console.info('show-treatments err', err)
         });
@@ -50,10 +72,21 @@ router.get("/api/show-treatments", async (req, res) => {
 
 router.get("/api/show-components", async (req, res) => {
     const result = await db
-        .select()
-        .from('components')
+        .select('c.id', 'c.name', 's.name as s_name')
+        .from({c: 'components'})
+        .leftJoin({s: 'substances'}, 'c.substance', 's.id')
         .catch(err => {
             console.info('show-components err', err)
+        });
+    res.json(result)
+})
+
+router.get("/api/show-substances", async (req, res) => {
+    const result = await db
+        .select('s.id', 's.name')
+        .from({s: 'substances'})
+        .catch(err => {
+            console.info('show-substances err', err)
         });
     res.json(result)
 })
