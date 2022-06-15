@@ -42,7 +42,7 @@ router.get("/api/show-templates", async (req, res) => {
         trt.name as type,
         dosage,
         volume,
-        array_agg(c.name) as contents
+        tt.contents
     `;
     const gb = `
         tt.id,
@@ -56,12 +56,12 @@ router.get("/api/show-templates", async (req, res) => {
         tat.name,
         trt.name,
         dosage,
-        volume
+        volume,
+        contents
     `;
     const result = await db
         .select(db.raw(fields))
         .from({ tt: 'treatments_templates' })
-        .leftJoin(db.raw('components c on c.id = any(tt.contents)'))
         .leftJoin({ p: 'product' }, 'p.id', 'tt.plant')
         .leftJoin({ s: 'phases' }, 's.id', 'tt.phase_start')
         .leftJoin({ ss: 'phases' }, 'ss.id', 'tt.phase_end')
@@ -135,7 +135,8 @@ router.get("/api/show-treatments", async (req, res) => {
         tt.treatment_gap,
         tt.special_condition,
         tt.dosage,
-        tt.volume
+        tt.volume,
+        t.contents
       `;
     const gb = `
         t.id,
@@ -156,14 +157,13 @@ router.get("/api/show-treatments", async (req, res) => {
         tt.treatment_gap,
         tt.special_condition,
         tt.dosage,
-        tt.volume
+        tt.volume,
+        t.contents
       `;
-    const components = ', array_agg(c.name) as components';
     const result = await db
-        .select(db.raw(fields + components))
+        .select(db.raw(fields))
         .from({t: 'treatments'})
         .leftJoin({ tt: 'treatments_templates' }, 't.template_id', 'tt.id')
-        .leftJoin(db.raw('components c on c.id = any(t.contents)'))
         .leftJoin({ s: 'phases' }, 's.id', 'tt.phase_start')
         .leftJoin({ ss: 'phases' }, 'ss.id', 'tt.phase_end')
         .leftJoin({ trt: 'treatment_types' }, 'tt.type', 'trt.id')
