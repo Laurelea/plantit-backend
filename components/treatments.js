@@ -1,8 +1,8 @@
-import express, {json, Router} from "express";
+import express, { Router } from "express";
 import cors from "cors";
 import db from "./db";
 
-const router = Router()
+const router = Router();
 const app = express();
 
 app.use(express.json())
@@ -14,8 +14,11 @@ const corsOptions = {
     //To allow requests from client
     origin: [
         "http://localhost:3000",
+        "http://localhost:3001",
         "http://127.0.1.1:3000",
+        "http://127.0.1.1:3001",
         "http://127.0.1.1:8080",
+        "http://127.0.1.1:8081",
     ],
     credentials: true,
     exposedHeaders: ["set-cookie"],
@@ -31,30 +34,30 @@ router.get("/", async (req, res) => {
 router.get("/api/show-templates", async (req, res) => {
     const fields = `
         tt.id,
-        p.product_name as plant,
+        p.plant_name as plant,
         purpose,
-        s.name as phase_start,
-        ss.name as phase_end,
+        s.phase_name as phase_start,
+        ss.phase_name as phase_end,
         frequency,
         treatment_gap,
         special_condition,
-        tat.name as apply_type,
-        trt.name as type,
+        treatment_apply_type_name as apply_type,
+        treatment_type_name as type,
         dosage,
         volume,
         tt.contents
     `;
     const gb = `
         tt.id,
-        p.product_name,
+        p.plant_name,
         purpose,
-        s.name,
-        ss.name,
+        s.phase_name,
+        ss.phase_name,
         frequency,
         treatment_gap,
         special_condition,
-        tat.name,
-        trt.name,
+        treatment_apply_type_name,
+        treatment_type_name,
         dosage,
         volume,
         contents
@@ -62,11 +65,11 @@ router.get("/api/show-templates", async (req, res) => {
     const result = await db
         .select(db.raw(fields))
         .from({ tt: 'treatments_templates' })
-        .leftJoin({ p: 'product' }, 'p.id', 'tt.plant')
+        .leftJoin({ p: 'plant' }, 'p.id', 'tt.plant_id')
         .leftJoin({ s: 'phases' }, 's.id', 'tt.phase_start')
         .leftJoin({ ss: 'phases' }, 'ss.id', 'tt.phase_end')
-        .leftJoin({ trt: 'treatment_types' }, 'tt.type', 'trt.id')
-        .leftJoin({ tat: 'treatment_apply_types' }, 'tt.apply_type', 'tat.id')
+        .leftJoin({ trt: 'treatment_types' }, 'tt.type_id', 'trt.id')
+        .leftJoin({ tat: 'treatment_apply_types' }, 'tt.apply_type_id', 'tat.id')
         .groupBy(db.raw(gb))
         .catch(err => {
             console.info('show-templates err', err)
@@ -74,12 +77,12 @@ router.get("/api/show-templates", async (req, res) => {
     res.json(result)
 })
 
-router.get("/api/get-products", async (req, res) => {
+router.get("/api/get-plants", async (req, res) => {
     const result = await db
         .select()
-        .from('product')
+        .from('plant')
         .catch(err => {
-            console.info('get-products err', err)
+            console.info('get-plants err', err)
         });
     res.json(result)
 })
@@ -120,9 +123,9 @@ router.get("/api/show-treatments", async (req, res) => {
         t.id,
         t.date_create,
         t.status,
-        p.product_name as plant,
-        trt.name as type,
-        tat.name as apply_type,
+        p.plant_name as plant,
+        treatment_type_name as type,
+        treatment_apply_type_name as apply_type,
         tt.purpose,
         s.name as phase_start,
         ss.name as phase_end,
@@ -146,8 +149,8 @@ router.get("/api/show-treatments", async (req, res) => {
         trt.name,
         tat.name,
         tt.purpose,
-        s.name,
-        ss.name,
+        s.phase_name,
+        ss.phase_name,
         t.period_started,
         t.period_ended,
         t.dates_to_do,
@@ -162,13 +165,13 @@ router.get("/api/show-treatments", async (req, res) => {
       `;
     const result = await db
         .select(db.raw(fields))
-        .from({t: 'treatments'})
+        .from({ t: 'treatments' })
         .leftJoin({ tt: 'treatments_templates' }, 't.template_id', 'tt.id')
         .leftJoin({ s: 'phases' }, 's.id', 'tt.phase_start')
         .leftJoin({ ss: 'phases' }, 'ss.id', 'tt.phase_end')
-        .leftJoin({ trt: 'treatment_types' }, 'tt.type', 'trt.id')
-        .leftJoin({ tat: 'treatment_apply_types' }, 'tt.apply_type', 'tat.id')
-        .leftJoin({ p: 'product' }, 'p.id', 'tt.plant')
+        .leftJoin({ trt: 'treatment_types' }, 'tt.type_id', 'trt.id')
+        .leftJoin({ tat: 'treatment_apply_types' }, 'tt.apply_type_id', 'tat.id')
+        .leftJoin({ p: 'plant' }, 'p.id', 'tt.plant_id')
         .groupBy(db.raw(gb))
         .catch(err => {
             console.info('show-treatments err', err)
@@ -178,9 +181,11 @@ router.get("/api/show-treatments", async (req, res) => {
 
 router.get("/api/show-components", async (req, res) => {
     const result = await db
-        .select('c.id', 'c.name', 's.name as s_name')
-        .from({c: 'components'})
-        .leftJoin({s: 'substances'}, 'c.substance', 's.id')
+        .select(db.raw('c.id, c.component_name, array_agg(s.substance_name) as substances'))
+        .from({ c: 'components' })
+        // .leftJoin({ s: 'substances' }, 'c.substancec', 's.id')
+        .leftJoin(db.raw('substances as s on s.id = any(c.substances)'))
+        .groupBy('c.id', 'c.component_name')
         .catch(err => {
             console.info('show-components err', err)
         });
@@ -189,8 +194,8 @@ router.get("/api/show-components", async (req, res) => {
 
 router.get("/api/show-substances", async (req, res) => {
     const result = await db
-        .select('s.id', 's.name')
-        .from({s: 'substances'})
+        .select('s.id', 's.substance_name')
+        .from({ s: 'substances' })
         .catch(err => {
             console.info('show-substances err', err)
         });
@@ -203,7 +208,7 @@ router.post("/api/add-component", async (req, res) => {
     await db
         .select('id')
         .from('components')
-        .where({name: data.name })
+        .where({ component_name: data.component_name })
         .then(async res => {
             if (res.length) {
                 result.success = false
@@ -243,7 +248,7 @@ router.post("/api/add-phase", async (req, res) => {
     await db
         .select('id')
         .from('phases')
-        .where({ name: data.name })
+        .where({ phase_name: data.phase_name })
         .then(async res => {
             if (res.length) {
                 result.success = false
@@ -307,7 +312,7 @@ router.post("/api/add-substance", async (req, res) => {
     await db
         .select('id')
         .from('substances')
-        .where({name: data.name })
+        .where({ substance_name: data.substance_name })
         .then(async res => {
             if (res.length) {
                 result.success = false

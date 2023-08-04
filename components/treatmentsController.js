@@ -8,21 +8,16 @@ export default {
     getUser: async email => {
         // console.info('Email to check: ', email)
         return await db.query('SELECT * FROM users WHERE email=$1', [email])
-        // console.info(ifUser, ifUser.rows.length)
-        // return ifUser
     },
     getUserByUN: async username => {
         console.info('UN to check: ', username)
         return await db.query('SELECT * FROM users WHERE user_name=$1', [username])
-        // console.info("ifUser.rows.length: ", ifUser.rows.length)
-        // return ifUN
     },
     addUser: async (username, password, email) => {
         try {
             const hashedPassword = await bcrypt.hashSync(password, bcrypt.genSaltSync(10), null)
             return await db.query(
                 'INSERT INTO users(user_name, password, email, true_password) VALUES ($1, $2, $3, $4) RETURNING *', [username, hashedPassword, email, password])
-            // console.info("New User:", newUser)
         } catch (e) {
             return e
         }
@@ -64,66 +59,67 @@ export default {
     getToken: async token => {
         console.info('Token to check: ', token)
         return await db.query('SELECT * FROM sessions WHERE token=$1', [token])
-        // console.info("ifUser.rows.length: ", ifUser.rows.length)
-        // return ifToken
     },
     showDB: async () => {
         return await dbKnex
             .select([
                 'sort.id',
-                'categories.cat_name',
-                'categories.cat_id',
-                'product.product_name',
-                'product.id as product_id',
-                'product.soil',
-                'product.watering',
-                'sort.name as name',
+                'plant_categories.category_name',
+                'plant_categories.id',
+                'plant.plant_name',
+                'plant.id as plant_id',
+                'plant.soil',
+                'plant.watering',
+                'sort.sort_name as sort_name',
                 'producer.producer_name',
                 'producer.id as producer_id',
                 'users.user_name',
-                'product.rootstock',
-                'yeartypes.name as yeartype',
-                'product.depth_min',
-                'product.depth_max',
-                'sort.height_min',
-                'sort.height_max',
-                'sort.days_to_seedlings_max',
-                'sort.days_to_seedlings_min',
-                'sort.planting_stop_day',
-                'sort.planting_stop_month',
-                'sort.planting_start_day',
-                'sort.planting_start_month',
-                'product.sun',
+                'plant.rootstock',
+                'plant.year_type as yeartype',
+                // 'plant.depth_min',
+                // 'plant.depth_max',
+                'plant.planting_depth',
+                // 'sort.height_min',
+                // 'sort.height_max',
+                'sort.height',
+                // 'sort.days_to_seedlings_max',
+                // 'sort.days_to_seedlings_min',
+                'sort.days_to_seedlings',
+                // 'sort.planting_stop_day',
+                // 'sort.planting_stop_month',
+                // 'sort.planting_start_day',
+                // 'sort.planting_start_month',
+                'sort.planting_time',
+                'plant.sun',
             ])
             .from('sort')
             .leftJoin('producer', 'sort.producer_id', 'producer.id')
-            .leftJoin('product', 'sort.product_id', 'product.id')
-            .leftJoin('users', 'sort.user_id', 'users.user_id')
-            .leftJoin('categories', 'product.category', 'categories.cat_id')
-            .leftJoin('yeartypes', 'product.yeartype', 'yeartypes.id')
+            .leftJoin('plant', 'sort.plant_id', 'plant.id')
+            .leftJoin('users', 'sort.user_id', 'users.id')
+            .leftJoin('categories', 'plant.category', 'plant_categories.id')
             .orderBy('sort.id')
             .catch(err => {
                 console.info('125 err', err)
             });
     },
     getCats: async () => {
-        return await dbKnex
+        return await db
             .select()
-            .from('categories')
+            .from('plant_categories')
             .catch(err => {
                 console.info('144 err', err)
             });
     },
-    getProducts: async () => {
-        return await dbKnex
+    getPlants: async () => {
+        return await db
             .select()
-            .from('product')
+            .from('plant')
             .catch(err => {
                 console.info('151 err', err)
             });
     },
     getProducers: async () => {
-        return await dbKnex
+        return await db
             .select()
             .from('producer')
             .catch(err => {
@@ -131,9 +127,8 @@ export default {
             });
     },
     getYearTypes: async () => {
-        return await dbKnex
-            .select()
-            .from('yeartypes')
+        return await db
+            .select(db.raw('unnest(enum_range(NULL::year_type))'))
             .catch(err => {
                 console.info('165 err', err)
             });
@@ -161,7 +156,7 @@ export default {
         console.info('controller addProducer producer', producer)
         let success = false;
         let message;
-        await dbKnex
+        await db
             .select()
             .from('producer')
             .where({producer_name: capitalizeFirstLetter(producer)})
@@ -192,7 +187,7 @@ export default {
             .catch(err => {
                 console.info('check err', err)
             });
-        return {success, message}
+        return { success, message }
     },
     addCat: async data => {
         const {category, cat_pic, cat_desc} = data;
@@ -201,18 +196,18 @@ export default {
         let message;
         await dbKnex
             .select()
-            .from('categories')
+            .from('plant_categories')
             .where({cat_name: capitalizeFirstLetter(category)})
             .then(async result => {
                 // console.info('283 check category result', result)
                 if (result.length === 0) {
                     await dbKnex
-                        .insert({cat_name: capitalizeFirstLetter(category), cat_desc, cat_pic})
-                        .into('categories')
+                        .insert({ category_name: capitalizeFirstLetter(category), description, cat_pic })
+                        .into('plant_categories')
                         .returning('*')
                         .then(result => {
                             console.info('290 result', result, result[0].cat_id)
-                            if (result[0].cat_id > 0) {
+                            if (result[0].id > 0) {
                                 console.info('292 ', result[0].cat_id)
                                 success = true;
                                 message = 'successfully added';
@@ -231,14 +226,15 @@ export default {
             });
         return {success, message}
     },
-    addProduct: async data => {
+    addPlant: async data => {
         const {
             category,
-            product,
-            yeartype,
+            plant_name,
+            year_type,
             rootstock,
-            depth_min,
-            depth_max,
+            // depth_min,
+            // depth_max,
+            planting_depth,
             watering,
             soil,
             sun
@@ -248,24 +244,25 @@ export default {
         let message;
         await dbKnex
             .select()
-            .from('product')
-            .where({product_name: capitalizeFirstLetter(product)})
+            .from('plant')
+            .where({ plant_name })
             .then(async result => {
                 // console.info('283 check category result', result)
                 if (result.length === 0) {
                     await dbKnex
                         .insert({
-                            product_name: capitalizeFirstLetter(product),
+                            plant_name,
                             category,
-                            yeartype,
+                            year_type,
                             rootstock,
-                            depth_min,
-                            depth_max,
+                            // depth_min,
+                            // depth_max,
+                            planting_depth,
                             watering,
                             soil,
                             sun
                         })
-                        .into('product')
+                        .into('plant')
                         .returning('*')
                         .then(result => {
                             console.info('325 result', result, result[0].id)
@@ -288,15 +285,15 @@ export default {
             });
         return {success, message}
     },
-    addPlant: async data => {
+    addSort: async data => {
         console.info('292 addPlant data:', data)
-        const {producer_id, product_id, name} = data
+        const { producer_id, plant_id, sort_name } = data
         let success = false;
         let message;
         await dbKnex
             .select()
             .from('sort')
-            .where({name, product_id, producer_id})
+            .where({ sort_name, producer_id, plant_id })
             .then(async result => {
                 if (result.length === 0) {
                     await dbKnex
@@ -327,16 +324,16 @@ export default {
             });
         return {success, message}
     },
-    delPlant: async data => {
+    delSort: async data => {
         console.info('329 data:', data)
-        const {id} = data;
+        const { id } = data;
         console.info('331 id:', id)
         let success = false;
         let message;
         await dbKnex
             .delete()
             .from('sort')
-            .where({id})
+            .where({ id })
             .then(async result => {
                 console.info('337 controller result', result)
                 message = 'plant deleted ok';
@@ -346,52 +343,58 @@ export default {
                 console.info('check err', err)
                 message = JSON.stringify(err);
             });
-        return {success, message}
+        return { success, message }
     },
-    editPlant: async data => {
-        console.info('354 editPlant data:', data)
+    editSort: async data => {
+        console.info('354 editSort data:', data)
         const {
             id,
-            product_id,
+            plant_id,
             producer_id,
-            name,
-            days_to_seedlings_min,
-            days_to_seedlings_max,
-            height_max,
-            height_min,
-            planting_start_day,
-            planting_start_month,
-            planting_stop_day,
-            planting_stop_month,
+            sort_name,
+            // days_to_seedlings_min,
+            // days_to_seedlings_max,
+            days_to_seedlings,
+            // height_max,
+            // height_min,
+            height,
+            // planting_start_day,
+            // planting_start_month,
+            // planting_stop_day,
+            // planting_stop_month,
+            planting_time,
             user_id
         } = data
         let success = false;
         let message;
         await dbKnex('sort')
-            .where({id})
+            .where({ id })
             .update({
-                product_id,
+                plant_id,
                 producer_id,
-                name,
-                days_to_seedlings_min,
-                days_to_seedlings_max,
-                height_max,
-                height_min,
-                planting_start_day,
-                planting_start_month,
-                planting_stop_day,
-                planting_stop_month,
+                sort_name,
+                // days_to_seedlings_min,
+                // days_to_seedlings_max,
+                days_to_seedlings,
+                // height_max,
+                // height_min,
+                height,
+                // planting_start_day,
+                // planting_start_month,
+                // planting_stop_day,
+                // planting_stop_month,
+                planting_time,
                 user_id
             })
             .then(async result => {
                 success = true;
-                console.info('403 controller editplant result:', result)
+                console.info('403 controller editSort result:', result)
             })
             .catch(err => {
                 console.info('406 check err', err)
                 message = JSON.stringify(err);
             });
-        return {success, message}
+        return { success, message }
     }
 }
 

@@ -16,6 +16,7 @@ const corsOptions = {
         "http://localhost:3000",
         "http://127.0.1.1:3000",
         "http://127.0.1.1:8080",
+        "http://127.0.1.1:8081",
     ],
     credentials: true,
     exposedHeaders: ["set-cookie"],
@@ -39,7 +40,7 @@ router.post("/api/addProducer", async (req, res) => {
 })
 
 router.post("/api/addProduct", async (req, res) => {
-    const { success, message } = await controller.addProduct(req.body)
+    const { success, message } = await controller.addPlant(req.body)
     res.send({ success, message })
 })
 
@@ -54,7 +55,7 @@ router.get("/api/getCats", async (req, res) => {
 })
 
 router.get("/api/getProducts", async (req, res) => {
-    const result = await controller.getProducts()
+    const result = await controller.getPlants()
     res.json(result)
 })
 
@@ -69,7 +70,7 @@ router.get("/api/getYearTypes", async (req, res) => {
 })
 
 router.put("/api/delplant", async (req, res) => {
-    const result = await delPlant(req.body)
+    const result = await controller.delSort(req.body)
     res.json(result)
 })
 
