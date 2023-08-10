@@ -34,43 +34,37 @@ router.get("/", async (req, res) => {
 router.get("/api/show-templates", async (req, res) => {
     const fields = `
         tt.id,
+        tt.template_name,
         p.plant_name as plant,
-        purpose,
-        s.phase_name as phase_start,
-        ss.phase_name as phase_end,
+        phase_start,
+        phase_end,
         frequency,
         treatment_gap,
         special_condition,
-        treatment_apply_type_name as apply_type,
-        treatment_type_name as type,
+        apply_type,
+        type,
         dosage,
-        volume,
-        tt.contents
+        volume
     `;
-    const gb = `
-        tt.id,
-        p.plant_name,
-        purpose,
-        s.phase_name,
-        ss.phase_name,
-        frequency,
-        treatment_gap,
-        special_condition,
-        treatment_apply_type_name,
-        treatment_type_name,
-        dosage,
-        volume,
-        contents
-    `;
+    // const gb = `
+    //     tt.id,
+    //     p.plant_name,
+    //     phase_start,
+    //     phase_end,
+    //     frequency,
+    //     treatment_gap,
+    //     special_condition,
+    //     apply_type,
+    //     type,
+    //     dosage,
+    //     volume,
+    //     contents
+    // `;
     const result = await db
         .select(db.raw(fields))
         .from({ tt: 'treatments_templates' })
         .leftJoin({ p: 'plant' }, 'p.id', 'tt.plant_id')
-        .leftJoin({ s: 'phases' }, 's.id', 'tt.phase_start')
-        .leftJoin({ ss: 'phases' }, 'ss.id', 'tt.phase_end')
-        .leftJoin({ trt: 'treatment_types' }, 'tt.type_id', 'trt.id')
-        .leftJoin({ tat: 'treatment_apply_types' }, 'tt.apply_type_id', 'tat.id')
-        .groupBy(db.raw(gb))
+        // .groupBy(db.raw(gb))
         .catch(err => {
             console.info('show-templates err', err)
         });
@@ -86,36 +80,36 @@ router.get("/api/get-plants", async (req, res) => {
         });
     res.json(result)
 })
+//
+// router.get("/api/get-phases", async (req, res) => {
+//     const result = await db
+//         .select()
+//         .from('phases')
+//         .catch(err => {
+//             console.info('get-phases err', err)
+//         });
+//     res.json(result)
+// })
 
-router.get("/api/get-phases", async (req, res) => {
-    const result = await db
-        .select()
-        .from('phases')
-        .catch(err => {
-            console.info('get-phases err', err)
-        });
-    res.json(result)
-})
-
-router.get("/api/get-treatment-types", async (req, res) => {
-    const result = await db
-        .select()
-        .from('treatment_types')
-        .catch(err => {
-            console.info('get-treatment-types err', err)
-        });
-    res.json(result)
-})
-
-router.get("/api/get-treatment-apply-types", async (req, res) => {
-    const result = await db
-        .select()
-        .from('treatment_apply_types')
-        .catch(err => {
-            console.info('get-treatment-apply-types err', err)
-        });
-    res.json(result)
-})
+// router.get("/api/get-treatment-types", async (req, res) => {
+//     const result = await db
+//         .select()
+//         .from('treatment_types')
+//         .catch(err => {
+//             console.info('get-treatment-types err', err)
+//         });
+//     res.json(result)
+// })
+//
+// router.get("/api/get-treatment-apply-types", async (req, res) => {
+//     const result = await db
+//         .select()
+//         .from('treatment_apply_types')
+//         .catch(err => {
+//             console.info('get-treatment-apply-types err', err)
+//         });
+//     res.json(result)
+// })
 
 
 router.get("/api/show-treatments", async (req, res) => {
@@ -124,13 +118,12 @@ router.get("/api/show-treatments", async (req, res) => {
         t.date_create,
         t.status,
         p.plant_name as plant,
-        treatment_type_name as type,
-        treatment_apply_type_name as apply_type,
-        tt.purpose,
-        s.name as phase_start,
-        ss.name as phase_end,
-        t.period_started,
-        t.period_ended,
+        type,
+        apply_type,
+        tt.phase_start,
+        tt.phase_end,
+        t.date_started,
+        t.date_finished,
         t.dates_to_do,
         t.dates_done,
         t.number_done,
@@ -139,20 +132,19 @@ router.get("/api/show-treatments", async (req, res) => {
         tt.special_condition,
         tt.dosage,
         tt.volume,
-        t.contents
+        tt.contents
       `;
     const gb = `
         t.id,
         t.date_create,
         t.status,
-        p.product_name,
-        trt.name,
-        tat.name,
-        tt.purpose,
-        s.phase_name,
-        ss.phase_name,
-        t.period_started,
-        t.period_ended,
+        p.plant_name,
+        type,
+        apply_type,
+        tt.phase_start,
+        tt.phase_end,
+        t.date_started,
+        t.date_finished,
         t.dates_to_do,
         t.dates_done,
         t.number_done,
@@ -161,16 +153,12 @@ router.get("/api/show-treatments", async (req, res) => {
         tt.special_condition,
         tt.dosage,
         tt.volume,
-        t.contents
+        tt.contents
       `;
     const result = await db
         .select(db.raw(fields))
         .from({ t: 'treatments' })
         .leftJoin({ tt: 'treatments_templates' }, 't.template_id', 'tt.id')
-        .leftJoin({ s: 'phases' }, 's.id', 'tt.phase_start')
-        .leftJoin({ ss: 'phases' }, 'ss.id', 'tt.phase_end')
-        .leftJoin({ trt: 'treatment_types' }, 'tt.type_id', 'trt.id')
-        .leftJoin({ tat: 'treatment_apply_types' }, 'tt.apply_type_id', 'tat.id')
         .leftJoin({ p: 'plant' }, 'p.id', 'tt.plant_id')
         .groupBy(db.raw(gb))
         .catch(err => {
@@ -183,7 +171,6 @@ router.get("/api/show-components", async (req, res) => {
     const result = await db
         .select(db.raw('c.id, c.component_name, array_agg(s.substance_name) as substances'))
         .from({ c: 'components' })
-        // .leftJoin({ s: 'substances' }, 'c.substancec', 's.id')
         .leftJoin(db.raw('substances as s on s.id = any(c.substances)'))
         .groupBy('c.id', 'c.component_name')
         .catch(err => {
@@ -242,45 +229,45 @@ router.post("/api/add-component", async (req, res) => {
         });
 })
 
-router.post("/api/add-phase", async (req, res) => {
-    const data = req.body
-    const result = {}
-    await db
-        .select('id')
-        .from('phases')
-        .where({ phase_name: data.phase_name })
-        .then(async res => {
-            if (res.length) {
-                result.success = false
-                result.message = 'phase already exists'
-            } else {
-                await db
-                    .insert({
-                        ...data
-                    })
-                    .into('phases')
-                    .returning('*')
-                    .then(res => {
-                        console.info('add-phase result', res)
-                        result.success = true
-                        result.message = 'success'
-                    })
-                    .catch(err => {
-                        console.info('add-phase err', err)
-                        result.success = false
-                        result.message = err
-                    })
-            }
-        })
-        .catch(err => {
-            console.info('check phase err', err)
-            result.success = false
-            result.message = err
-        })
-        .finally(() => {
-            res.json(result)
-        });
-})
+// router.post("/api/add-phase", async (req, res) => {
+//     const data = req.body
+//     const result = {}
+//     await db
+//         .select('id')
+//         .from('phases')
+//         .where({ phase_name: data.phase_name })
+//         .then(async res => {
+//             if (res.length) {
+//                 result.success = false
+//                 result.message = 'phase already exists'
+//             } else {
+//                 await db
+//                     .insert({
+//                         ...data
+//                     })
+//                     .into('phases')
+//                     .returning('*')
+//                     .then(res => {
+//                         console.info('add-phase result', res)
+//                         result.success = true
+//                         result.message = 'success'
+//                     })
+//                     .catch(err => {
+//                         console.info('add-phase err', err)
+//                         result.success = false
+//                         result.message = err
+//                     })
+//             }
+//         })
+//         .catch(err => {
+//             console.info('check phase err', err)
+//             result.success = false
+//             result.message = err
+//         })
+//         .finally(() => {
+//             res.json(result)
+//         });
+// })
 
 router.post("/api/add-template", async (req, res) => {
     const data = req.body
