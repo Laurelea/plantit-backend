@@ -37,7 +37,8 @@ const start = async () => {
             })
         })
         .catch(err => {
-            return console.error('error connecting to pg databse via knex:', err)
+            console.error('error connecting to pg databse via knex:', err)
+            start()
         })
 }
 start()

@@ -35,7 +35,7 @@ router.get("/api/show-templates", async (req, res) => {
     const fields = `
         tt.id,
         tt.template_name,
-        p.plant_name as plant,
+        p.plant_name,
         phase_start,
         phase_end,
         frequency,
@@ -80,36 +80,39 @@ router.get("/api/get-plants", async (req, res) => {
         });
     res.json(result)
 })
-//
-// router.get("/api/get-phases", async (req, res) => {
-//     const result = await db
-//         .select()
-//         .from('phases')
-//         .catch(err => {
-//             console.info('get-phases err', err)
-//         });
-//     res.json(result)
-// })
 
-// router.get("/api/get-treatment-types", async (req, res) => {
-//     const result = await db
-//         .select()
-//         .from('treatment_types')
-//         .catch(err => {
-//             console.info('get-treatment-types err', err)
-//         });
-//     res.json(result)
-// })
-//
-// router.get("/api/get-treatment-apply-types", async (req, res) => {
-//     const result = await db
-//         .select()
-//         .from('treatment_apply_types')
-//         .catch(err => {
-//             console.info('get-treatment-apply-types err', err)
-//         });
-//     res.json(result)
-// })
+router.get("/api/get-phases", async (req, res) => {
+    const result = await db
+        .select(db.raw('enum_range(NULL::phases)::text[] as phases'))
+        .catch(err => {
+            console.error('get-phases err', err)
+        });
+    // console.info(90, result && result.length && result[0].phases)
+    res.json(result && result.length && result[0].phases)
+    // res.json(result)
+})
+
+router.get("/api/get-treatment-types", async (req, res) => {
+    const result = await db
+        .select(db.raw('enum_range(NULL::treatment_type)::text[] as treatment_types'))
+        // .from('treatment_types')
+        .catch(err => {
+            console.info('get-treatment-types err', err)
+        });
+    // res.json(result)
+    res.json(result && result.length && result[0].treatment_types)
+})
+
+router.get("/api/get-treatment-apply-types", async (req, res) => {
+    const result = await db
+        .select(db.raw('enum_range(NULL::treatment_apply_type)::text[] as treatment_apply_types'))
+        // .from('treatment_apply_types')
+        .catch(err => {
+            console.info('get-treatment-apply-types err', err)
+        });
+    // res.json(result)
+    res.json(result && result.length && result[0].treatment_apply_types)
+})
 
 
 router.get("/api/show-treatments", async (req, res) => {
@@ -169,10 +172,14 @@ router.get("/api/show-treatments", async (req, res) => {
 
 router.get("/api/show-components", async (req, res) => {
     const result = await db
-        .select(db.raw('c.id, c.component_name, array_agg(s.substance_name) as substances'))
+        .select(
+            db.raw(
+                "c.id, c.component_name, c.description, array_to_string(array_agg(s.substance_name), ', ') as substances"
+            )
+        )
         .from({ c: 'components' })
         .leftJoin(db.raw('substances as s on s.id = any(c.substances)'))
-        .groupBy('c.id', 'c.component_name')
+        .groupBy('c.id', 'c.component_name', 'c.description')
         .catch(err => {
             console.info('show-components err', err)
         });
@@ -190,6 +197,7 @@ router.get("/api/show-substances", async (req, res) => {
 })
 
 router.post("/api/add-component", async (req, res) => {
+    console.info(200, 'add component')
     const data = req.body
     const result = {}
     await db
@@ -199,7 +207,7 @@ router.post("/api/add-component", async (req, res) => {
         .then(async res => {
             if (res.length) {
                 result.success = false
-                result.message = 'component already exists'
+                result.message = 'component with this name already exists'
             } else {
                 await db
                     .insert({
