@@ -46,25 +46,13 @@ router.get("/api/show-templates", async (req, res) => {
         dosage,
         volume
     `;
-    // const gb = `
-    //     tt.id,
-    //     p.plant_name,
-    //     phase_start,
-    //     phase_end,
-    //     frequency,
-    //     treatment_gap,
-    //     special_condition,
-    //     apply_type,
-    //     type,
-    //     dosage,
-    //     volume,
-    //     contents
-    // `;
+    const agg = ", array_to_string(array_agg(c.component_name), ', ') as contents"
     const result = await db
-        .select(db.raw(fields))
+        .select(db.raw(`${fields}${agg}`))
         .from({ tt: 'treatments_templates' })
         .leftJoin({ p: 'plant' }, 'p.id', 'tt.plant_id')
-        // .groupBy(db.raw(gb))
+        .leftJoin(db.raw('components as c on c.id = any(tt.contents)'))
+        .groupBy(db.raw(fields))
         .catch(err => {
             console.info('show-templates err', err)
         });
@@ -87,30 +75,33 @@ router.get("/api/get-phases", async (req, res) => {
         .catch(err => {
             console.error('get-phases err', err)
         });
-    // console.info(90, result && result.length && result[0].phases)
     res.json(result && result.length && result[0].phases)
-    // res.json(result)
+})
+
+router.get("/api/get-statuses", async (req, res) => {
+    const result = await db
+        .select(db.raw('enum_range(NULL::statuses)::text[] as statuses'))
+        .catch(err => {
+            console.error('get-statuses err', err)
+        });
+    res.json(result && result.length && result[0].statuses)
 })
 
 router.get("/api/get-treatment-types", async (req, res) => {
     const result = await db
         .select(db.raw('enum_range(NULL::treatment_type)::text[] as treatment_types'))
-        // .from('treatment_types')
         .catch(err => {
             console.info('get-treatment-types err', err)
         });
-    // res.json(result)
     res.json(result && result.length && result[0].treatment_types)
 })
 
 router.get("/api/get-treatment-apply-types", async (req, res) => {
     const result = await db
         .select(db.raw('enum_range(NULL::treatment_apply_type)::text[] as treatment_apply_types'))
-        // .from('treatment_apply_types')
         .catch(err => {
             console.info('get-treatment-apply-types err', err)
         });
-    // res.json(result)
     res.json(result && result.length && result[0].treatment_apply_types)
 })
 
@@ -118,27 +109,7 @@ router.get("/api/get-treatment-apply-types", async (req, res) => {
 router.get("/api/show-treatments", async (req, res) => {
     const fields = `
         t.id,
-        t.date_create,
-        t.status,
-        p.plant_name as plant,
-        type,
-        apply_type,
-        tt.phase_start,
-        tt.phase_end,
-        t.date_started,
-        t.date_finished,
-        t.dates_to_do,
-        t.dates_done,
-        t.number_done,
-        tt.frequency,
-        tt.treatment_gap,
-        tt.special_condition,
-        tt.dosage,
-        tt.volume,
-        tt.contents
-      `;
-    const gb = `
-        t.id,
+        tt.template_name,
         t.date_create,
         t.status,
         p.plant_name,
@@ -155,15 +126,15 @@ router.get("/api/show-treatments", async (req, res) => {
         tt.treatment_gap,
         tt.special_condition,
         tt.dosage,
-        tt.volume,
-        tt.contents
-      `;
+        tt.volume`;
+    const agg = ", array_to_string(array_agg(c.component_name), ', ') as contents"
     const result = await db
-        .select(db.raw(fields))
+        .select(db.raw(`${fields}${agg}`))
         .from({ t: 'treatments' })
         .leftJoin({ tt: 'treatments_templates' }, 't.template_id', 'tt.id')
         .leftJoin({ p: 'plant' }, 'p.id', 'tt.plant_id')
-        .groupBy(db.raw(gb))
+        .leftJoin(db.raw('components as c on c.id = any(tt.contents)'))
+        .groupBy(db.raw(fields))
         .catch(err => {
             console.info('show-treatments err', err)
         });
@@ -237,46 +208,6 @@ router.post("/api/add-component", async (req, res) => {
         });
 })
 
-// router.post("/api/add-phase", async (req, res) => {
-//     const data = req.body
-//     const result = {}
-//     await db
-//         .select('id')
-//         .from('phases')
-//         .where({ phase_name: data.phase_name })
-//         .then(async res => {
-//             if (res.length) {
-//                 result.success = false
-//                 result.message = 'phase already exists'
-//             } else {
-//                 await db
-//                     .insert({
-//                         ...data
-//                     })
-//                     .into('phases')
-//                     .returning('*')
-//                     .then(res => {
-//                         console.info('add-phase result', res)
-//                         result.success = true
-//                         result.message = 'success'
-//                     })
-//                     .catch(err => {
-//                         console.info('add-phase err', err)
-//                         result.success = false
-//                         result.message = err
-//                     })
-//             }
-//         })
-//         .catch(err => {
-//             console.info('check phase err', err)
-//             result.success = false
-//             result.message = err
-//         })
-//         .finally(() => {
-//             res.json(result)
-//         });
-// })
-
 router.post("/api/add-template", async (req, res) => {
     const data = req.body
     const result = {}
@@ -333,6 +264,30 @@ router.post("/api/add-substance", async (req, res) => {
         })
         .catch(err => {
             console.info('check substance err', err)
+            result.success = false
+            result.message = err
+        })
+        .finally(() => {
+            res.json(result)
+        });
+})
+
+router.post("/api/add-treatment", async (req, res) => {
+    const data = req.body
+    const result = {}
+    await db
+        .insert({
+            ...data
+        })
+        .into('treatments')
+        .returning('*')
+        .then(res => {
+            console.info('add-treatment result', res)
+            result.success = true
+            result.message = 'success'
+        })
+        .catch(err => {
+            console.info('add-treatment err', err)
             result.success = false
             result.message = err
         })
